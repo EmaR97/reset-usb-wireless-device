@@ -30,15 +30,13 @@ log_message() {
 }
 
 reset_usb_device() {
-  local device_path=$1
-  log_message "INFO" "Attempting to reset USB at $device_path."
-
-  log_message "INFO" "Disabling USB device."
-  (echo '0' | sudo tee "$device_path/authorized") >> "$LOGFILE" 2>&1
-  sleep 1
-  log_message "INFO" "Enabling USB device."
-  (echo '1' | sudo tee "$device_path/authorized") >> "$LOGFILE" 2>&1
-
+  for dev in /sys/bus/usb/devices/*/authorized; do
+		log_message "INFO" "Disabling USB device. $dev"
+		(echo '0' | sudo tee  "$dev") >> "$LOGFILE" 2>&1
+		sleep 1
+		log_message "INFO" "Enabling USB device."
+		(echo '1' | sudo tee  "$dev") >> "$LOGFILE" 2>&1
+  done
   if mycmd; then
       log_message "INFO" "USB reset successful."
   else
@@ -61,7 +59,8 @@ find_ath9k_device() {
        sleep $RETRY_DELAY
        if [ $attempt -ge $MAX_RETRIES ]; then
            log_message "ERROR" "Maximum retries reached. Rebooting the system."
-           sudo reboot
+						sudo systemctl reboot -r
+           sleep 10
        fi
        continue
     fi
@@ -77,7 +76,7 @@ log_message "INFO" "Checking internet connectivity."
 if ! ping -c 1 -W 2 google.com > /dev/null; then
     log_message "WARN" "Ping failed."
     find_ath9k_device
-    reset_usb_device "$DEVICE_PATH"
+    reset_usb_device
 else
     log_message "INFO" "Connectivity check passed. No action needed."
 fi
